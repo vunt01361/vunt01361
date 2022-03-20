@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Revenue statistics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@^3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@^2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<style>
+    html,
+    body {
+        font-family: Tahoma;
+        font-size: 16px;
+        text-align: center;
+        scroll-behavior: smooth;
+    }
+
+    .button {
+        border-radius: 8px;
+        border: none;
+        background-color: #56A5E1;
+        color: white;
+        font-family: Tahoma;
+        font-size: 13px;
+        text-align: center;
+        padding: 10px 15px;
+        cursor: pointer;
+    }
+
+    .button:hover {
+        background-color: #438cc3;
+    }
+
+    .nav {
+        border: 1px solid #ccc;
+        border-width: 1px 0;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+    }
+
+    .nav li {
+        display: inline;
+    }
+
+    .nav a {
+        display: inline-block;
+        padding: 10px;
+    }
+
+    table {
+        border-collapse: collapse;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    td,
+    th {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    tr:hover {
+        background-color: #ddd;
+    }
+
+    th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        background-color: #04AA6D;
+    }
+
+    .tab {
+        overflow: hidden;
+        border: 1px solid #ccc;
+        background-color: #f1f1f1;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .tab button {
+        background-color: inherit;
+        float: center;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+        font-size: 17px;
+    }
+
+    .tab button:hover {
+        background-color: #ddd;
+    }
+
+    .tab button.active {
+        background-color: #ccc;
+    }
+
+    .tabcontent {
+        display: none;
+        padding: 20px 12px;
+        border: 1px solid #ccc;
+        border-top: none;
+    }
+</style>
+
+<body onload="calculate();">
+
+    <div id="header">
+        <h2>Crabada monitor</h2>
+
+        <p id="loading"></p>
+        <div id="results" style="display: none">
+            <br></br>
+            <div class="tab">
+                <button class="tablinks" onclick="openTab(event, 'healthcheck')" id="tab_1">Health monitor</button>
+                <button class="tablinks" onclick="openTab(event, 'mining')" id="tab_2">Mining stats</button>
+            </div>
+
+            <div id="healthcheck" class="tabcontent">
+                <div id="results_table_healthcheck"></div>
+            </div>
+
+            <div id="mining" class="tabcontent">
+                <div id="results_text_mine"></div>
+                <div id="container_mine" style="display: flex; flex-flow: row wrap; justify-content: space-between; width:70vw; margin: auto;">
+                    <div id="chart_container_mine" style="margin: auto; padding: 2%;  width:30vw; flex: 40%;">
+                        <canvas id="tus_revenue_chart_mine"></canvas>
+                    </div>
+                    <div id="chart_container_mine2" style="margin: auto; padding: 2%;  width:30vw; flex: 40%;">
+                        <canvas id="tus_revenue_chart_mine2"></canvas>
+                    </div>
+                    <div id="chart_container_mine3" style="margin: auto; padding: 2%;  width:30vw; flex: 40%;">
+                        <canvas id="tus_revenue_chart_mine3"></canvas>
+                    </div>
+                    <div id="chart_container_mine4" style="margin: auto; padding: 2%;  width:30vw; flex: 40%;">
+                        <canvas id="tus_revenue_chart_mine4"></canvas>
+                    </div>
+                </div>
+                <div id="container_mine" style="display: flex; flex-flow: row wrap; justify-content: space-between;">
+                    <div id="results_table_mine" style="padding-right: 8px; flex: 24%"></div>
+                    <div id="results_table_mine2" style="padding-right: 8px; flex: 24%"></div>
+                    <div id="results_table_mine3" style="padding-right: 8px; flex: 24%"></div>
+                    <div id="results_table_mine4" style="padding-right: 8px; flex: 24%"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+<script type="text/javascript">
+    var sync_data;
+    let wallet = "0x54CdD4A88fa1AFdDD7CE0900cd14cB4fBcc6d859";
+    let wallet2 = "0xFEa3cE2628c383a6abfcDe47E5bd3bFF383559e3";
+    let wallet3 = "0xe09dc713C95F7ae24Dfe3b25eCb1a5D784fB44B2";
+    let wallet4 = "0x93aFc05D23DFF0A433A4E38627e8f50eAab34330";
+    let teamcount = 1;
+    const token = '';
+    const chatId = '-743620446';
+
+    function openTab(evt, cityName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(cityName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+
+    function updateData(input_data) {
+        console.log("update: " + input_data);
+
+        sync_data.push(input_data);
+    }
+
+    function healthCheck() {
+        let results_table_healthcheck = document.getElementById("results_table_healthcheck");
+        sync_data = [];
+        const teams_status = {}
+        let team_status = ""
+        let message = ""
+        
+        requests = []
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/teams?user_address=${wallet}&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/teams?user_address=${wallet2}&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/teams?user_address=${wallet3}&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/teams?user_address=${wallet4}&limit=20`).then(response => response.json()))
+        
+        Promise.all(requests).then(function (responses) {
+            responses.forEach((r,index) => {
+                if (r.error_code) {
+                    let err = `${r.error_code} - ${r.message}`
+                    throw err
+                }
+                
+                game_requests = []
+                r["result"]["data"].forEach(teaminfo => {
+                    //console.log(teaminfo)
+                    teams_status[teaminfo.team_id] = {}
+                    teams_status[teaminfo.team_id].owner = teaminfo.owner
+                    teams_status[teaminfo.team_id].status = teaminfo.status
+                    if (teaminfo.status != "MINING") {
+                        teams_status[teaminfo.team_id].team_status = "NG"
+                        teams_status[teaminfo.team_id].message = "Team is not mining!"
+                        //telegram bot alert
+                        if (token != "") {
+                            $.ajax({
+                                type: 'POST',
+                                url: `https://api.telegram.org/bot${token}/sendMessage`,
+                                data: {
+                                    chat_id: chatId,
+                                    text: "Wallet " + (index+1) + " : " + teams_status[teaminfo.team_id].owner + ". Team ID " + teaminfo.team_id + ": " + teams_status[teaminfo.team_id].message,
+                                    parse_mode: 'html',
+                                },
+                                success: function (res) {
+                                    console.debug(res);
+                                    $('#response').text('Message sent');
+                                },
+                                error: function (error) {
+                                    console.error(error);
+                                    //alert("error failed");
+                                }
+                            });
+                        }
+                        updateData("teaminfo" + teamcount++);
+                    } else {
+                        game_requests.push(fetch(`https://idle-api.crabada.com/public/idle/mine/${teaminfo.game_id}`).then(response => response.json()))
+                    }
+                    
+                })
+                Promise.all(game_requests).then(function(game_responses){
+                    game_responses.forEach(ret => {
+                        if (ret.error_code) {
+                            let err = `${ret.error_code} - ${ret.message}`
+                            throw err
+                        }
+                        gameinfo = ret["result"]
+                        process_length = gameinfo.process.length
+                        current_process = gameinfo.process[process_length - 1].action
+                        last_transaction_time = gameinfo.process[process_length - 1].transaction_time
+                        last_transaction_time = new Date(last_transaction_time * 1000)
+                        time_diff = (new Date() - last_transaction_time) / 1000;
+                        if ((process_length == 2 || process_length == 4) && (current_process == "attack" || current_process == "reinforce-attack")) {
+                            if (time_diff >= 300 && time_diff < 900) {
+                                //quá 5 phút mà chưa thuê cua => warning
+                                teams_status[gameinfo.team_id].team_status = "WARNING"
+                                teams_status[gameinfo.team_id].message = "Not reinforce for over 5 minutes"
+                            } else if (time_diff >= 900) {
+                                //quá 15 phút mà chưa thuê cua => alert
+                                teams_status[gameinfo.team_id].team_status = "NG"
+                                teams_status[gameinfo.team_id].message = "Not reinforce for over 15 minutes"
+                                //telegram bot alert
+                                if (token != "") {
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: `https://api.telegram.org/bot${token}/sendMessage`,
+                                        data: {
+                                            chat_id: chatId,
+                                            text: "Wallet " + (index+1) + " : " + teams_status[gameinfo.team_id].owner + ". Team ID " + gameinfo.team_id + ": " + teams_status[gameinfo.team_id].message,
+                                            parse_mode: 'html',
+                                        },
+                                        success: function (res) {
+                                            console.debug(res);
+                                            $('#response').text('Message sent');
+                                        },
+                                        error: function (error) {
+                                            console.error(error);
+                                            //alert("error failed");
+                                        }
+                                    });
+                                }
+                            } else {
+                                teams_status[gameinfo.team_id].team_status = "OK"
+                                teams_status[gameinfo.team_id].message = ""
+                            }
+                        } else {
+                            // bình thường
+                            teams_status[gameinfo.team_id].team_status = "OK"
+                            teams_status[gameinfo.team_id].message = ""
+                        }
+                        updateData("teaminfo" + teamcount++);
+                    })
+                }).catch(function (error) {
+                    console.error(error);
+                    results_table_healthcheck.innerHTML = error
+                });
+            })
+            
+            let dataPromise = new Promise((resolve, reject) => {
+                let dataInterval = setInterval(function(){
+                    if(
+                        sync_data.includes("teaminfo1")
+                        && sync_data.includes("teaminfo2")
+                        && sync_data.includes("teaminfo3")
+                        && sync_data.includes("teaminfo4")
+                        && sync_data.includes("teaminfo5")
+                        && sync_data.includes("teaminfo6")
+                        && sync_data.includes("teaminfo7")
+                        && sync_data.includes("teaminfo8")
+                        && sync_data.includes("teaminfo9")
+                        && sync_data.includes("teaminfo10")
+                        && sync_data.includes("teaminfo11")
+                        && sync_data.includes("teaminfo12")
+                    ){
+                        teamcount = 1;
+                        clearInterval(dataInterval);
+                        resolve();
+                    }
+                }, 500);
+            });
+            dataPromise.then(() => {
+                let healthmonitor = ''
+                healthmonitor += `<p>Last time check: ${new Date()}</p>`
+                healthmonitor += `<table><tbody>`
+                healthmonitor += `<tr><th>Wallet</th><th>Team ID</th><th>Status</th><th>Health</th><th>Note</th></tr>`
+                Object.keys(teams_status).forEach(function (team) {
+                    //console.log(teams_status[team])
+                    healthmonitor += `<tr>`
+                    healthmonitor += `<td>${teams_status[team].owner}</td>`
+                    healthmonitor += `<td>${team}</td>`
+                    healthmonitor += `<td>${teams_status[team].status}</td>`
+                    healthmonitor += `<td>${teams_status[team].team_status}</td>`
+                    healthmonitor += `<td>${teams_status[team].message}</td>`
+                    healthmonitor += `</tr>`
+                })
+                healthmonitor += `</tbody></table></br>`
+                
+                results_table_healthcheck.innerHTML = healthmonitor
+            });
+            
+        }).catch(function (error) {
+            console.error(error);
+            results_table_healthcheck.innerHTML = error
+        })
+    }
+
+    function calculate() {
+        let loading = document.getElementById("loading");
+
+        loading.innerHTML = "Loading...";
+        
+        healthCheck();
+        setInterval(healthCheck, 300000);
+
+        let results = document.getElementById("results");
+
+        let results_text_mine = document.getElementById("results_text_mine");
+
+        let results_table_mine = document.getElementById("results_table_mine");
+
+
+        sync_data = [];
+
+        const totalByDayMine = {}
+        let totalTUSMine = 0
+        let totalCRAMine = 0
+        let totalMines = 0
+        let totalWinsMine = 0
+        let totalLossesMine = 0
+        let teamsMine = []
+
+        const totalByDayMine2 = {}
+        let totalTUSMine2 = 0
+        let totalCRAMine2 = 0
+        let totalMines2 = 0
+        let totalWinsMine2 = 0
+        let totalLossesMine2 = 0
+        let teamsMine2 = []
+
+        const totalByDayMine3 = {}
+        let totalTUSMine3 = 0
+        let totalCRAMine3 = 0
+        let totalMines3 = 0
+        let totalWinsMine3 = 0
+        let totalLossesMine3 = 0
+        let teamsMine3 = []
+
+        const totalByDayMine4 = {}
+        let totalTUSMine4 = 0
+        let totalCRAMine4 = 0
+        let totalMines4 = 0
+        let totalWinsMine4 = 0
+        let totalLossesMine4 = 0
+        let teamsMine4 = []
+
+        requests = []
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet}&status=close&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet2}&status=close&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet3}&status=close&limit=20`).then(response => response.json()))
+        requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet4}&status=close&limit=20`).then(response => response.json()))
+
+        Promise.all(requests).then(function (responses) {
+            responses.forEach(r => {
+                if (r.error_code) {
+                    let err = `${r.error_code} - ${r.message}`
+                    throw err
+                }
+            })
+            const mines = responses[0]["result"]["data"]
+            const totalMinePages = responses[0]["result"]["totalPages"]
+
+            if (mines.length == 0) {
+                results_text_mine.innerHTML += '<h4>Mining</h4>'
+                results_text_mine.innerHTML += `You didn't mine yet. Go mine!`
+                updateData("mining1");
+            }
+            else {
+                // get all pages
+                pages_requests = []
+                for(let i = 1; i <= totalMinePages; i++){
+                    pages_requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet}&status=close&limit=20&page=${i}`).then(response => response.json()))
+                }
+
+                Promise.all(pages_requests).then(function(pages_responses){
+                    pages_responses.forEach(r => {
+                        if (r.error_code) {
+                            let err = `${r.error_code} - ${r.message}`
+                            throw err
+                        }
+                        if (r["result"]["data"] === null) { return; }
+
+                        pages_mines = r["result"]["data"]
+                        pages_mines.forEach(t => {
+                            const miner_cra_reward = t.miner_cra_reward
+                            const miner_tus_reward = t.miner_tus_reward
+                            const date = new Date(t.end_time * 1000)
+                            const day = date.toISOString().split('T')[0]
+                            if (!(day in totalByDayMine)) {
+                                totalByDayMine[day] = {}
+                                totalByDayMine[day].cra = 0
+                                totalByDayMine[day].tus = 0
+                                totalByDayMine[day].mines = 0
+                                totalByDayMine[day].wins = 0
+                                totalByDayMine[day].losses = 0
+                            }
+                            if (!teamsMine.includes(t.team_id)) {
+                                teamsMine.push(t.team_id)
+                            }
+                            totalByDayMine[day].cra += miner_cra_reward
+                            totalByDayMine[day].tus += miner_tus_reward
+                            totalByDayMine[day].mines += 1
+                            totalTUSMine += miner_tus_reward
+                            totalCRAMine += miner_cra_reward
+                            totalMines += 1
+                            if (t.team_id == t.winner_team_id) {
+                                totalWinsMine += 1
+                                totalByDayMine[day].wins += 1
+
+                            } else {
+                                totalLossesMine += 1
+                                totalByDayMine[day].losses += 1
+                            }
+
+                        })
+                        updateData("mining1");
+                    })
+                }).catch(function (error) {
+                    console.error(error);
+                    loading.innerHTML = error
+                });
+            }
+            
+            const mines2 = responses[1]["result"]["data"]
+            const totalMinePages2 = responses[1]["result"]["totalPages"]
+
+            if (mines2.length == 0) {
+                results_text_mine.innerHTML += '<h4>Mining</h4>'
+                results_text_mine.innerHTML += `You didn't mine yet. Go mine!`
+                updateData("mining2");
+            }
+            else {
+                // get all pages
+                pages_requests = []
+                for(let i = 1; i <= totalMinePages2; i++){
+                    pages_requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet2}&status=close&limit=20&page=${i}`).then(response => response.json()))
+                }
+
+                Promise.all(pages_requests).then(function(pages_responses){
+                    pages_responses.forEach(r => {
+                        if (r.error_code) {
+                            let err = `${r.error_code} - ${r.message}`
+                            throw err
+                        }
+                        if (r["result"]["data"] === null) { return; }
+
+                        pages_mines = r["result"]["data"]
+                        pages_mines.forEach(t => {
+                            const miner_cra_reward = t.miner_cra_reward
+                            const miner_tus_reward = t.miner_tus_reward
+                            const date = new Date(t.end_time * 1000)
+                            const day = date.toISOString().split('T')[0]
+                            if (!(day in totalByDayMine2)) {
+                                totalByDayMine2[day] = {}
+                                totalByDayMine2[day].cra = 0
+                                totalByDayMine2[day].tus = 0
+                                totalByDayMine2[day].mines = 0
+                                totalByDayMine2[day].wins = 0
+                                totalByDayMine2[day].losses = 0
+                            }
+                            if (!teamsMine2.includes(t.team_id)) {
+                                teamsMine2.push(t.team_id)
+                            }
+                            totalByDayMine2[day].cra += miner_cra_reward
+                            totalByDayMine2[day].tus += miner_tus_reward
+                            totalByDayMine2[day].mines += 1
+                            totalTUSMine2 += miner_tus_reward
+                            totalCRAMine2 += miner_cra_reward
+                            totalMines2 += 1
+                            if (t.team_id == t.winner_team_id) {
+                                totalWinsMine2 += 1
+                                totalByDayMine2[day].wins += 1
+
+                            } else {
+                                totalLossesMine2 += 1
+                                totalByDayMine2[day].losses += 1
+                            }
+
+                        })
+                        updateData("mining2");
+                    })
+                }).catch(function (error) {
+                    console.error(error);
+                    loading.innerHTML = error
+                });
+            }
+            
+            const mines3 = responses[2]["result"]["data"]
+            const totalMinePages3 = responses[2]["result"]["totalPages"]
+
+            if (mines3.length == 0) {
+                results_text_mine.innerHTML += '<h4>Mining</h4>'
+                results_text_mine.innerHTML += `You didn't mine yet. Go mine!`
+                updateData("mining3");
+            }
+            else {
+                // get all pages
+                pages_requests = []
+                for(let i = 1; i <= totalMinePages3; i++){
+                    pages_requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet3}&status=close&limit=20&page=${i}`).then(response => response.json()))
+                }
+
+                Promise.all(pages_requests).then(function(pages_responses){
+                    pages_responses.forEach(r => {
+                        if (r.error_code) {
+                            let err = `${r.error_code} - ${r.message}`
+                            throw err
+                        }
+                        if (r["result"]["data"] === null) { return; }
+
+                        pages_mines = r["result"]["data"]
+                        pages_mines.forEach(t => {
+                            const miner_cra_reward = t.miner_cra_reward
+                            const miner_tus_reward = t.miner_tus_reward
+                            const date = new Date(t.end_time * 1000)
+                            const day = date.toISOString().split('T')[0]
+                            if (!(day in totalByDayMine3)) {
+                                totalByDayMine3[day] = {}
+                                totalByDayMine3[day].cra = 0
+                                totalByDayMine3[day].tus = 0
+                                totalByDayMine3[day].mines = 0
+                                totalByDayMine3[day].wins = 0
+                                totalByDayMine3[day].losses = 0
+                            }
+                            if (!teamsMine3.includes(t.team_id)) {
+                                teamsMine3.push(t.team_id)
+                            }
+                            totalByDayMine3[day].cra += miner_cra_reward
+                            totalByDayMine3[day].tus += miner_tus_reward
+                            totalByDayMine3[day].mines += 1
+                            totalTUSMine3 += miner_tus_reward
+                            totalCRAMine3 += miner_cra_reward
+                            totalMines3 += 1
+                            if (t.team_id == t.winner_team_id) {
+                                totalWinsMine3 += 1
+                                totalByDayMine3[day].wins += 1
+
+                            } else {
+                                totalLossesMine3 += 1
+                                totalByDayMine3[day].losses += 1
+                            }
+
+                        })
+                        updateData("mining3");
+                    })
+                }).catch(function (error) {
+                    console.error(error);
+                    loading.innerHTML = error
+                });
+            }
+            
+            const mines4 = responses[3]["result"]["data"]
+            const totalMinePages4 = responses[3]["result"]["totalPages"]
+
+            if (mines4.length == 0) {
+                results_text_mine.innerHTML += '<h4>Mining</h4>'
+                results_text_mine.innerHTML += `You didn't mine yet. Go mine!`
+                updateData("mining4");
+            }
+            else {
+                // get all pages
+                pages_requests = []
+                for(let i = 1; i <= totalMinePages4; i++){
+                    pages_requests.push(fetch(`https://idle-api.crabada.com/public/idle/mines?user_address=${wallet4}&status=close&limit=20&page=${i}`).then(response => response.json()))
+                }
+
+                Promise.all(pages_requests).then(function(pages_responses){
+                    pages_responses.forEach(r => {
+                        if (r.error_code) {
+                            let err = `${r.error_code} - ${r.message}`
+                            throw err
+                        }
+                        if (r["result"]["data"] === null) { return; }
+
+                        pages_mines = r["result"]["data"]
+                        pages_mines.forEach(t => {
+                            const miner_cra_reward = t.miner_cra_reward
+                            const miner_tus_reward = t.miner_tus_reward
+                            const date = new Date(t.end_time * 1000)
+                            const day = date.toISOString().split('T')[0]
+                            if (!(day in totalByDayMine4)) {
+                                totalByDayMine4[day] = {}
+                                totalByDayMine4[day].cra = 0
+                                totalByDayMine4[day].tus = 0
+                                totalByDayMine4[day].mines = 0
+                                totalByDayMine4[day].wins = 0
+                                totalByDayMine4[day].losses = 0
+                            }
+                            if (!teamsMine4.includes(t.team_id)) {
+                                teamsMine4.push(t.team_id)
+                            }
+                            totalByDayMine4[day].cra += miner_cra_reward
+                            totalByDayMine4[day].tus += miner_tus_reward
+                            totalByDayMine4[day].mines += 1
+                            totalTUSMine4 += miner_tus_reward
+                            totalCRAMine4 += miner_cra_reward
+                            totalMines4 += 1
+                            if (t.team_id == t.winner_team_id) {
+                                totalWinsMine4 += 1
+                                totalByDayMine4[day].wins += 1
+
+                            } else {
+                                totalLossesMine4 += 1
+                                totalByDayMine4[day].losses += 1
+                            }
+
+                        })
+                        updateData("mining4");
+                    })
+                }).catch(function (error) {
+                    console.error(error);
+                    loading.innerHTML = error
+                });
+            }
+
+            let dataPromise = new Promise((resolve, reject) => {
+                let dataInterval = setInterval(function(){
+                    if(
+                        sync_data.includes("mining1")
+                        && sync_data.includes("mining2")
+                        && sync_data.includes("mining3")
+                        && sync_data.includes("mining4")
+                    ){
+                        clearInterval(dataInterval);
+                        resolve();
+                    }
+                }, 500);
+            });
+
+            dataPromise.then(() => {
+                loading.innerHTML = "";
+                let today = new Date()
+                today = today.toISOString().split('T')[0]
+
+                if (Object.keys(totalByDayMine).length === 0 || Object.keys(totalByDayMine2).length === 0 || Object.keys(totalByDayMine3).length === 0 || Object.keys(totalByDayMine4).length === 0) {
+                    results_text_mine.innerHTML += `You didn't mine yet. Go mine!`
+                } else {
+                    // Wallet 1
+                    number_for_avg = today in totalByDayMine ? Object.keys(totalByDayMine).length - 1 : Object.keys(totalByDayMine).length
+                    number_for_avg = number_for_avg > 0 ? number_for_avg : 1
+
+                    dailyAvgTUS = totalTUSMine / number_for_avg
+                    dailyAvgCRA = totalCRAMine / number_for_avg
+                    dailyAvgMines = totalMines / number_for_avg
+                    dailyAvgWins = totalWinsMine / number_for_avg
+                    dailyAvgLosses = totalLossesMine / number_for_avg
+
+                    dailyMax = Object.keys(totalByDayMine).reduce((a, b) => totalByDayMine[a].tus > totalByDayMine[b].tus ? a : b);
+                    dailyMinFilter = Object.keys(totalByDayMine).filter(v => v != today)
+                    dailyMin = dailyMinFilter.length > 0 ? dailyMinFilter.reduce((a, b) => totalByDayMine[a].tus < totalByDayMine[b].tus ? a : b) : today
+
+                    // Wallet 2
+                    number_for_avg2 = today in totalByDayMine2 ? Object.keys(totalByDayMine2).length - 1 : Object.keys(totalByDayMine2).length
+                    number_for_avg2 = number_for_avg2 > 0 ? number_for_avg2 : 1
+
+                    dailyAvgTUS2 = totalTUSMine2 / number_for_avg2
+                    dailyAvgCRA2 = totalCRAMine2 / number_for_avg2
+                    dailyAvgMines2 = totalMines2 / number_for_avg2
+                    dailyAvgWins2 = totalWinsMine2 / number_for_avg2
+                    dailyAvgLosses2 = totalLossesMine2 / number_for_avg2
+
+                    dailyMax2 = Object.keys(totalByDayMine2).reduce((a, b) => totalByDayMine2[a].tus > totalByDayMine2[b].tus ? a : b);
+                    dailyMinFilter2 = Object.keys(totalByDayMine2).filter(v => v != today)
+                    dailyMin2 = dailyMinFilter2.length > 0 ? dailyMinFilter2.reduce((a, b) => totalByDayMine2[a].tus < totalByDayMine2[b].tus ? a : b) : today
+
+                    // Wallet 3
+                    number_for_avg3 = today in totalByDayMine3 ? Object.keys(totalByDayMine3).length - 1 : Object.keys(totalByDayMine3).length
+                    number_for_avg3 = number_for_avg3 > 0 ? number_for_avg3 : 1
+
+                    dailyAvgTUS3 = totalTUSMine3 / number_for_avg3
+                    dailyAvgCRA3 = totalCRAMine3 / number_for_avg3
+                    dailyAvgMines3 = totalMines3 / number_for_avg3
+                    dailyAvgWins3 = totalWinsMine3 / number_for_avg3
+                    dailyAvgLosses3 = totalLossesMine3 / number_for_avg3
+
+                    dailyMax3 = Object.keys(totalByDayMine3).reduce((a, b) => totalByDayMine3[a].tus > totalByDayMine3[b].tus ? a : b);
+                    dailyMinFilter3 = Object.keys(totalByDayMine3).filter(v => v != today)
+                    dailyMin3 = dailyMinFilter3.length > 0 ? dailyMinFilter3.reduce((a, b) => totalByDayMine3[a].tus < totalByDayMine3[b].tus ? a : b) : today
+
+                    // Wallet 4
+                    number_for_avg4 = today in totalByDayMine4 ? Object.keys(totalByDayMine4).length - 1 : Object.keys(totalByDayMine4).length
+                    number_for_avg4 = number_for_avg4 > 0 ? number_for_avg4 : 1
+
+                    dailyAvgTUS4 = totalTUSMine4 / number_for_avg4
+                    dailyAvgCRA4 = totalCRAMine4 / number_for_avg4
+                    dailyAvgMines4 = totalMines4 / number_for_avg4
+                    dailyAvgWins4 = totalWinsMine4 / number_for_avg4
+                    dailyAvgLosses4 = totalLossesMine4 / number_for_avg4
+
+                    dailyMax4 = Object.keys(totalByDayMine4).reduce((a, b) => totalByDayMine4[a].tus > totalByDayMine4[b].tus ? a : b);
+                    dailyMinFilter4 = Object.keys(totalByDayMine4).filter(v => v != today)
+                    dailyMin4 = dailyMinFilter4.length > 0 ? dailyMinFilter4.reduce((a, b) => totalByDayMine4[a].tus < totalByDayMine4[b].tus ? a : b) : today
+
+                    let statsmine = ''
+                    statsmine += `<table><tbody>`
+
+                    statsmine += `<tr><th>Item</th><th>Wallet 1</th><th>Wallet 2</th><th>Wallet 3</th><th>Wallet 4</th></tr>`
+                    statsmine += `<tr><td>Total revenue</td> \
+                                    <td>${(totalTUSMine / 1.0e18).toFixed(4)} TUS and ${(totalCRAMine / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(totalTUSMine2 / 1.0e18).toFixed(4)} TUS and ${(totalCRAMine2 / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(totalTUSMine3 / 1.0e18).toFixed(4)} TUS and ${(totalCRAMine3 / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(totalTUSMine4 / 1.0e18).toFixed(4)} TUS and ${(totalCRAMine4 / 1.0e18).toFixed(4)} CRA</td> \
+                                  </tr>`
+
+
+                    if (today in totalByDayMine && today in totalByDayMine2 && today in totalByDayMine3 && today in totalByDayMine4) {
+                        statsmine += `<tr><td>Today's revenue</td> \
+                                        <td>${(totalByDayMine[today].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[today].cra / 1.0e18).toFixed(4)} CRA <br>(${today} - ${totalByDayMine[today].mines} mines)</td> \
+                                        <td>${(totalByDayMine2[today].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine2[today].cra / 1.0e18).toFixed(4)} CRA <br>(${today} - ${totalByDayMine2[today].mines} mines)</td> \
+                                        <td>${(totalByDayMine3[today].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine3[today].cra / 1.0e18).toFixed(4)} CRA <br>(${today} - ${totalByDayMine3[today].mines} mines)</td> \
+                                        <td>${(totalByDayMine4[today].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine4[today].cra / 1.0e18).toFixed(4)} CRA <br>(${today} - ${totalByDayMine4[today].mines} mines)</td> \
+                                      </tr>`;
+                        statsmine += `<tr><td>Today's mines</td> \
+                                        <td>${totalByDayMine[today].mines} being ${totalByDayMine[today].wins} wins and ${totalByDayMine[today].losses} losses <br><strong>(${Math.round(100 * totalByDayMine[today].wins / (totalByDayMine[today].mines))}% win rate)</strong></td> \
+                                        <td>${totalByDayMine2[today].mines} being ${totalByDayMine2[today].wins} wins and ${totalByDayMine2[today].losses} losses <br><strong>(${Math.round(100 * totalByDayMine2[today].wins / (totalByDayMine2[today].mines))}% win rate)</strong></td> \
+                                        <td>${totalByDayMine3[today].mines} being ${totalByDayMine3[today].wins} wins and ${totalByDayMine3[today].losses} losses <br><strong>(${Math.round(100 * totalByDayMine3[today].wins / (totalByDayMine3[today].mines))}% win rate)</strong></td> \
+                                        <td>${totalByDayMine4[today].mines} being ${totalByDayMine4[today].wins} wins and ${totalByDayMine4[today].losses} losses <br><strong>(${Math.round(100 * totalByDayMine4[today].wins / (totalByDayMine4[today].mines))}% win rate)</strong></td> \
+                                      </tr>`;
+                    } else {
+                        statsmine += `<tr><td>Today's revenue</td> \
+                                        <td>No mining activity today. Go mine!</td> \
+                                        <td>No mining activity today. Go mine!</td> \
+                                        <td>No mining activity today. Go mine!</td> \
+                                        <td>No mining activity today. Go mine!</td> \
+                                      </tr>`;
+                    }
+
+                    statsmine += `<tr><td>Average revenue per day</td> \
+                                    <td>${(dailyAvgTUS / 1.0e18).toFixed(4)} TUS and ${(dailyAvgCRA / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(dailyAvgTUS2 / 1.0e18).toFixed(4)} TUS and ${(dailyAvgCRA2 / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(dailyAvgTUS3 / 1.0e18).toFixed(4)} TUS and ${(dailyAvgCRA3 / 1.0e18).toFixed(4)} CRA</td> \
+                                    <td>${(dailyAvgTUS4 / 1.0e18).toFixed(4)} TUS and ${(dailyAvgCRA4 / 1.0e18).toFixed(4)} CRA</td> \
+                                  </tr>`;
+                    statsmine += `<tr><td>Best day</td>
+                                    <td>${(totalByDayMine[dailyMax].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[dailyMax].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMax} - ${totalByDayMine[dailyMax].mines} mines)</td> \
+                                    <td>${(totalByDayMine2[dailyMax2].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine2[dailyMax2].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMax2} - ${totalByDayMine2[dailyMax2].mines} mines)</td> \
+                                    <td>${(totalByDayMine3[dailyMax3].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine3[dailyMax3].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMax3} - ${totalByDayMine3[dailyMax3].mines} mines)</td> \
+                                    <td>${(totalByDayMine4[dailyMax4].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine4[dailyMax4].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMax4} - ${totalByDayMine4[dailyMax4].mines} mines)</td> \
+                                  </tr>`;
+                    statsmine += `<tr><td>Worst day</td> \
+                                    <td>${(totalByDayMine[dailyMin].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[dailyMin].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMin} - ${totalByDayMine[dailyMin].mines} mines)</td> \
+                                    <td>${(totalByDayMine[dailyMin2].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[dailyMin2].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMin2} - ${totalByDayMine[dailyMin2].mines} mines)</td> \
+                                    <td>${(totalByDayMine[dailyMin3].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[dailyMin3].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMin3} - ${totalByDayMine[dailyMin3].mines} mines)</td> \
+                                    <td>${(totalByDayMine[dailyMin4].tus / 1.0e18).toFixed(4)} TUS and ${(totalByDayMine[dailyMin4].cra / 1.0e18).toFixed(4)} CRA <br>(${dailyMin4} - ${totalByDayMine[dailyMin4].mines} mines)</td> \
+                                  </tr>`;
+                    statsmine += `<tr><td>Total mines</td> \
+                                    <td>${totalMines} being ${totalWinsMine} wins and ${totalLossesMine} losses <br><strong>(${Math.round(100 * totalWinsMine / (totalMines))}% win rate)</strong></td> \
+                                    <td>${totalMines2} being ${totalWinsMine2} wins and ${totalLossesMine2} losses <br><strong>(${Math.round(100 * totalWinsMine2 / (totalMines2))}% win rate)</strong></td> \
+                                    <td>${totalMines3} being ${totalWinsMine3} wins and ${totalLossesMine3} losses <br><strong>(${Math.round(100 * totalWinsMine3 / (totalMines3))}% win rate)</strong></td> \
+                                    <td>${totalMines4} being ${totalWinsMine4} wins and ${totalLossesMine4} losses <br><strong>(${Math.round(100 * totalWinsMine4 / (totalMines4))}% win rate)</strong></td> \
+                                  </tr>`;
+                    statsmine += `<tr><td>Average mines per day</td> \
+                                    <td>${dailyAvgMines.toFixed(1)} being on average ${dailyAvgWins.toFixed(1)} wins and ${dailyAvgLosses.toFixed(1)} losses <br>(${Math.round(100 * dailyAvgWins / (dailyAvgMines))}% win rate)</td> \
+                                    <td>${dailyAvgMines2.toFixed(1)} being on average ${dailyAvgWins2.toFixed(1)} wins and ${dailyAvgLosses2.toFixed(1)} losses <br>(${Math.round(100 * dailyAvgWins2 / (dailyAvgMines2))}% win rate)</td> \
+                                    <td>${dailyAvgMines3.toFixed(1)} being on average ${dailyAvgWins3.toFixed(1)} wins and ${dailyAvgLosses3.toFixed(1)} losses <br>(${Math.round(100 * dailyAvgWins3 / (dailyAvgMines3))}% win rate)</td> \
+                                    <td>${dailyAvgMines4.toFixed(1)} being on average ${dailyAvgWins4.toFixed(1)} wins and ${dailyAvgLosses4.toFixed(1)} losses <br>(${Math.round(100 * dailyAvgWins4 / (dailyAvgMines4))}% win rate)</td> \
+                                  </tr>`;
+                    statsmine += `<tr><td>Number of teams</td> \
+                                    <td>${teamsMine.length}</td> \
+                                    <td>${teamsMine2.length}</td> \
+                                    <td>${teamsMine3.length}</td> \
+                                    <td>${teamsMine4.length}</td> \
+                                  </tr>`
+
+                    statsmine += "</tbody></table></br>"
+                    results_text_mine.innerHTML += statsmine
+
+                    results_table_mine.innerHTML += `</br>Daily stats wallet 1:</br><br>`
+
+                    labels = []
+                    data_values = []
+                    let tablemine = ''
+                    tablemine += `<table><thead><tr><th>Date</th><th>TUS</th><th>CRA</th><th>#Mines</th><th>Win rate</th></tr></thead><tbody>`
+
+                    Object.keys(totalByDayMine).sort(function (a, b) {
+                        return moment(b, 'YYYY-MM-DD').toDate() - moment(a, 'YYYY-MM-DD').toDate();
+                    }).forEach(function (key) {
+                        labels.push(key)
+                        data_values.push((totalByDayMine[key].tus / 1.0e18).toFixed(4))
+                        tablemine += `<tr><td>${key}</td><td>${(totalByDayMine[key].tus / 1.0e18).toFixed(4)}</td><td>${(totalByDayMine[key].cra / 1.0e18).toFixed(4)}</td><td>${totalByDayMine[key].mines}</td><td>${Math.round(100 * totalByDayMine[key].wins / (totalByDayMine[key].mines))}%</td></tr>`
+
+                    })
+                    tablemine += "</tbody></table></br>"
+                    results_table_mine.innerHTML += tablemine
+
+                    results_table_mine2.innerHTML += `</br>Daily stats wallet 2:</br><br>`
+
+                    labels2 = []
+                    data_values2 = []
+                    let tablemine2 = ''
+                    tablemine2 += `<table><thead><tr><th>Date</th><th>TUS</th><th>CRA</th><th>#Mines</th><th>Win rate</th></tr></thead><tbody>`
+
+                    Object.keys(totalByDayMine2).sort(function (a, b) {
+                        return moment(b, 'YYYY-MM-DD').toDate() - moment(a, 'YYYY-MM-DD').toDate();
+                    }).forEach(function (key) {
+                        labels2.push(key)
+                        data_values2.push((totalByDayMine2[key].tus / 1.0e18).toFixed(4))
+                        tablemine2 += `<tr><td>${key}</td><td>${(totalByDayMine2[key].tus / 1.0e18).toFixed(4)}</td><td>${(totalByDayMine2[key].cra / 1.0e18).toFixed(4)}</td><td>${totalByDayMine2[key].mines}</td><td>${Math.round(100 * totalByDayMine2[key].wins / (totalByDayMine2[key].mines))}%</td></tr>`
+
+                    })
+                    tablemine2 += "</tbody></table></br>"
+                    results_table_mine2.innerHTML += tablemine2
+
+                    results_table_mine3.innerHTML += `</br>Daily stats wallet 3:</br><br>`
+
+                    labels3 = []
+                    data_values3 = []
+                    let tablemine3 = ''
+                    tablemine3 += `<table><thead><tr><th>Date</th><th>TUS</th><th>CRA</th><th>#Mines</th><th>Win rate</th></tr></thead><tbody>`
+
+                    Object.keys(totalByDayMine3).sort(function (a, b) {
+                        return moment(b, 'YYYY-MM-DD').toDate() - moment(a, 'YYYY-MM-DD').toDate();
+                    }).forEach(function (key) {
+                        labels3.push(key)
+                        data_values3.push((totalByDayMine3[key].tus / 1.0e18).toFixed(4))
+                        tablemine3 += `<tr><td>${key}</td><td>${(totalByDayMine3[key].tus / 1.0e18).toFixed(4)}</td><td>${(totalByDayMine3[key].cra / 1.0e18).toFixed(4)}</td><td>${totalByDayMine3[key].mines}</td><td>${Math.round(100 * totalByDayMine3[key].wins / (totalByDayMine3[key].mines))}%</td></tr>`
+
+                    })
+                    tablemine3 += "</tbody></table></br>"
+                    results_table_mine3.innerHTML += tablemine3
+
+                    results_table_mine4.innerHTML += `</br>Daily stats wallet 4:</br><br>`
+
+                    labels4 = []
+                    data_values4 = []
+                    let tablemine4 = ''
+                    tablemine4 += `<table><thead><tr><th>Date</th><th>TUS</th><th>CRA</th><th>#Mines</th><th>Win rate</th></tr></thead><tbody>`
+
+                    Object.keys(totalByDayMine4).sort(function (a, b) {
+                        return moment(b, 'YYYY-MM-DD').toDate() - moment(a, 'YYYY-MM-DD').toDate();
+                    }).forEach(function (key) {
+                        labels4.push(key)
+                        data_values4.push((totalByDayMine4[key].tus / 1.0e18).toFixed(4))
+                        tablemine4 += `<tr><td>${key}</td><td>${(totalByDayMine4[key].tus / 1.0e18).toFixed(4)}</td><td>${(totalByDayMine4[key].cra / 1.0e18).toFixed(4)}</td><td>${totalByDayMine4[key].mines}</td><td>${Math.round(100 * totalByDayMine4[key].wins / (totalByDayMine4[key].mines))}%</td></tr>`
+
+                    })
+                    tablemine4 += "</tbody></table></br>"
+                    results_table_mine4.innerHTML += tablemine4
+
+                    if (!(today in totalByDayMine)) {
+                        labels.push(today)
+                        data_values.push(0)
+                    }
+                    if (!(today in totalByDayMine2)) {
+                        labels2.push(today)
+                        data_values2.push(0)
+                    }
+                    if (!(today in totalByDayMine3)) {
+                        labels3.push(today)
+                        data_values3.push(0)
+                    }
+                    if (!(today in totalByDayMine4)) {
+                        labels4.push(today)
+                        data_values4.push(0)
+                    }
+
+                    let datamine = {
+                        labels: labels,
+                        datasets: [{
+                            label: 'TUS Revenue per day wallet 1',
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: data_values,
+                        }]
+                    };
+                    let chart = new Chart(document.getElementById('tus_revenue_chart_mine').getContext('2d'),
+                        {
+                            type: 'bar',
+                            data: datamine,
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                    let datamine2 = {
+                        labels: labels2,
+                        datasets: [{
+                            label: 'TUS Revenue per day wallet 2',
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: data_values2,
+                        }]
+                    };
+                    let chart2 = new Chart(document.getElementById('tus_revenue_chart_mine2').getContext('2d'),
+                        {
+                            type: 'bar',
+                            data: datamine2,
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                    let datamine3 = {
+                        labels: labels3,
+                        datasets: [{
+                            label: 'TUS Revenue per day wallet 3',
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: data_values3,
+                        }]
+                    };
+                    let chart3 = new Chart(document.getElementById('tus_revenue_chart_mine3').getContext('2d'),
+                        {
+                            type: 'bar',
+                            data: datamine3,
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                    let datamine4 = {
+                        labels: labels4,
+                        datasets: [{
+                            label: 'TUS Revenue per day wallet 4',
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: data_values4,
+                        }]
+                    };
+                    let chart4 = new Chart(document.getElementById('tus_revenue_chart_mine4').getContext('2d'),
+                        {
+                            type: 'bar',
+                            data: datamine4,
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                }
+
+
+                document.getElementById("tab_1").click();
+                results.style.display = "block";
+            });
+        }).catch(function (error) {
+            console.error(error);
+            loading.innerHTML = error
+        })
+    }
+
+</script>
+
+</html>
