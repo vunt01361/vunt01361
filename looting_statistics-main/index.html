@@ -166,7 +166,7 @@
     let wallet3 = "0xe09dc713C95F7ae24Dfe3b25eCb1a5D784fB44B2";
     let wallet4 = "0x93aFc05D23DFF0A433A4E38627e8f50eAab34330";
     let teamcount = 1;
-    const token = '';
+    const token = '5288450328:AAE2iZ7d8qR-ArkDM2WB79gcDkpYzNsvjcU';
     const chatId = '-743620446';
 
     function openTab(evt, cityName) {
@@ -187,6 +187,86 @@
         console.log("update: " + input_data);
 
         sync_data.push(input_data);
+    }
+
+    function isDefLowerThanAtk(defense_team_info, attack_team_info, defense_faction, attack_faction) {
+        FACTION_NONE = 'NO_FACTION'
+        FACTION_ORE = 'ORE'
+        FACTION_ABYSS = 'ABYSS'
+        FACTION_TRENCH = 'TRENCH'
+        FACTION_MACHINE = 'MACHINE'
+        FACTION_LUX = 'LUX'
+        FACTION_FAERIE = 'FAERIE'
+        NO_FACTION_DECREASE = 0.97
+        FACTION_DECREASE = 0.93
+        
+        calc_defense_point = 0
+        calc_attack_point = 0
+        defense_point = 0
+        attack_point = 0
+        rent_defense_point = 0
+        rent_attack_point = 0
+        
+        defense_team_info.forEach((def_team, i) => {
+            crab_bp = def_team.hp + def_team.armor + def_team.damage
+            if (i < 3) {
+                defense_point += crab_bp
+            } else {
+                rent_defense_point += crab_bp
+            }
+        })
+        attack_team_info.forEach((atk_team, i) => {
+            crab_bp = atk_team.hp + atk_team.armor + atk_team.damage
+            if (i < 3) {
+                attack_point += crab_bp
+            } else {
+                rent_attack_point += crab_bp
+            }
+        })
+            
+        if (defense_faction == attack_faction) {
+            calc_defense_point = defense_point
+            calc_attack_point = attack_point
+        } else if (defense_faction != FACTION_NONE && attack_faction == FACTION_NONE) {
+            calc_defense_point = defense_point
+            calc_attack_point = attack_point * NO_FACTION_DECREASE
+        } else if (defense_faction == FACTION_NONE && attack_faction != FACTION_NONE) {
+            calc_defense_point = defense_point * NO_FACTION_DECREASE
+            calc_attack_point = attack_point
+        } else {
+            defense_rate = 0
+            if (defense_faction == FACTION_ORE) {
+                if ([FACTION_ABYSS, FACTION_TRENCH].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_FAERIE, FACTION_LUX].includes(attack_faction)) defense_rate = -1
+            } else if (defense_faction == FACTION_ABYSS) {
+                if ([FACTION_TRENCH, FACTION_MACHINE].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_ORE, FACTION_FAERIE].includes(attack_faction)) defense_rate = -1
+            } else if (defense_faction == FACTION_TRENCH) {
+                if ([FACTION_MACHINE, FACTION_LUX].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_ABYSS, FACTION_ORE].includes(attack_faction)) defense_rate = -1
+            } else if (defense_faction == FACTION_MACHINE) {
+                if ([FACTION_LUX, FACTION_FAERIE].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_TRENCH, FACTION_ABYSS].includes(attack_faction)) defense_rate = -1
+            } else if (defense_faction == FACTION_LUX) {
+                if ([FACTION_FAERIE, FACTION_ORE].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_MACHINE, FACTION_TRENCH].includes(attack_faction)) defense_rate = -1
+            } else if (defense_faction == FACTION_FAERIE) {
+                if ([FACTION_ORE, FACTION_ABYSS].includes(attack_faction)) defense_rate = 1
+                if ([FACTION_LUX, FACTION_MACHINE].includes(attack_faction)) defense_rate = -1
+            }
+            
+            if (defense_rate > 0) {
+                calc_defense_point = defense_point
+                calc_attack_point = attack_point * FACTION_DECREASE
+            } else if (defense_rate < 0) {
+                calc_defense_point = defense_point * FACTION_DECREASE
+                calc_attack_point = attack_point
+            } else {
+                calc_defense_point = defense_point
+                calc_attack_point = attack_point
+            }
+        }
+        return calc_defense_point + rent_defense_point < calc_attack_point + rent_attack_point;
     }
 
     function healthCheck() {
@@ -251,17 +331,45 @@
                             throw err
                         }
                         gameinfo = ret["result"]
+                        //console.log("Game ID: " + gameinfo.game_id);
+                        game_end_time = new Date(gameinfo.end_time * 1000)
                         process_length = gameinfo.process.length
                         current_process = gameinfo.process[process_length - 1].action
                         last_transaction_time = gameinfo.process[process_length - 1].transaction_time
                         last_transaction_time = new Date(last_transaction_time * 1000)
-                        time_diff = (new Date() - last_transaction_time) / 1000;
-                        if ((process_length == 2 || process_length == 4) && (current_process == "attack" || current_process == "reinforce-attack")) {
-                            if (time_diff >= 300 && time_diff < 900) {
+                        now = new Date();
+                        time_diff = (now - last_transaction_time) / 1000;
+                        if (game_end_time < now) {
+                            //game chưa được close => alert
+                            teams_status[gameinfo.team_id].team_status = "NG"
+                            teams_status[gameinfo.team_id].message = "Game ended but not closing"
+                            //telegram bot alert
+                            if (token != "") {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: `https://api.telegram.org/bot${token}/sendMessage`,
+                                    data: {
+                                        chat_id: chatId,
+                                        text: "Wallet " + (index+1) + " : " + teams_status[gameinfo.team_id].owner + ". Team ID " + gameinfo.team_id + ": " + teams_status[gameinfo.team_id].message,
+                                        parse_mode: 'html',
+                                    },
+                                    success: function (res) {
+                                        console.debug(res);
+                                        $('#response').text('Message sent');
+                                    },
+                                    error: function (error) {
+                                        console.error(error);
+                                        //alert("error failed");
+                                    }
+                                });
+                            }
+                        } else if ((process_length == 2 || process_length == 4) && (current_process == "attack" || current_process == "reinforce-attack")) {
+                            isNeedDefense = isDefLowerThanAtk(gameinfo.defense_team_info, gameinfo.attack_team_info, gameinfo.defense_team_faction, gameinfo.attack_team_faction);
+                            if (isNeedDefense && time_diff >= 300 && time_diff < 900) {
                                 //quá 5 phút mà chưa thuê cua => warning
                                 teams_status[gameinfo.team_id].team_status = "WARNING"
                                 teams_status[gameinfo.team_id].message = "Not reinforce for over 5 minutes"
-                            } else if (time_diff >= 900) {
+                            } else if (isNeedDefense && time_diff >= 900 && time_diff < 1800) {
                                 //quá 15 phút mà chưa thuê cua => alert
                                 teams_status[gameinfo.team_id].team_status = "NG"
                                 teams_status[gameinfo.team_id].message = "Not reinforce for over 15 minutes"
